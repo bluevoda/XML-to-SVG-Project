@@ -125,7 +125,6 @@ static void FillElements(xmlNode * a_node)
           y_axis.elements[a].name = malloc(sizeof(char)*256);
           y_axis.elements[a].unit = malloc(sizeof(char)*25);
           y_axis.elements[a].showvalue = false;
-          printf("%s\n", y_axis.elements[a].showvalue?"true":"false");
           if(cur_node->properties != NULL)
           {
             for (NodeAttribute = cur_node->properties; NodeAttribute;NodeAttribute = NodeAttribute->next) {
@@ -133,20 +132,16 @@ static void FillElements(xmlNode * a_node)
               if(!strcmp(NodeAttribute->name, "unit"))
               {
                 strcpy(y_axis.elements[a].unit , attribute);
-                printf("%s\n",y_axis.elements[a].unit  );
               }
               else if(!strcmp(NodeAttribute->name, "name"))
               {
                 strcpy(y_axis.elements[a].name , attribute);
-                printf("%s\n",y_axis.elements[a].name);
               }
               else if(!strcmp(NodeAttribute->name, "showvalue"))
               {
                 if(!strcmp(attribute,"yes"))
                 {
-                  printf("%s\n",attribute);
                   y_axis.elements[a].showvalue = true;
-                  printf("girdi");
                 }
               }
               else if(!strcmp(NodeAttribute->name, "fillcolor"))
@@ -166,7 +161,6 @@ static void FillElements(xmlNode * a_node)
 
              }
            }
-           printf("%s\n", y_axis.elements[a].showvalue?"true":"false");
            y_axis.howmanyelements = a +1;
          }
       }
