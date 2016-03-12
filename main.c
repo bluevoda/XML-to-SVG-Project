@@ -1,5 +1,6 @@
 #include "stdio.h"
 #include "string.h"
+#include "stdbool.h"
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 /*
@@ -9,27 +10,33 @@ struct Canvas{
   char * charttitle;
   int width;
   int length;
-  char bgcolor [6];
-};
-struct Yaxis{
-  char *name;
-  char color [6];
-  int *YaxisElements;
+  char bgcolor [7];
 };
 struct YaxisElements{
   char *name;
   char *unit;
-  char color [7];
-  int *values;
+  char fillcolor [7];
+  int values [10];
+  bool showvalue;
 };
+struct Yaxis{
+  char *name;
+  char color [7];
+  int howmanyelements;
+  struct YaxisElements elements[10];
+
+};
+
 struct Xaxis{
   char *name;
-  char **xelements;
+  int howmanyelements;
+  char xelements[10][256];
 };
 
 struct Yaxis y_axis;
 struct Xaxis x_axis;
 struct Canvas canvas;
+struct YaxisElements elements[10];
 
 /*
 static void print_element_names(xmlNode * a_node)
@@ -52,8 +59,7 @@ static void FillElements(xmlNode * a_node)
           xmlNode * asd_node = NULL;
           for (asd_node = cur_node->children; asd_node; asd_node = asd_node->next) {
              if ( asd_node->type == XML_ELEMENT_NODE) {
-
-            if(!strcmp(asd_node->name,"length"))
+                if(!strcmp(asd_node->name,"length"))
             {
               canvas.length= atoi(asd_node->children->content);
               //printf("%s\n",canvas.charttitle );
@@ -65,37 +71,104 @@ static void FillElements(xmlNode * a_node)
             else if(!strcmp(asd_node->name,"backcolor"))
             {
               strcpy(canvas.bgcolor,asd_node->children->content);
-
-                printf(" 1");
             }
           }
         }
         }
         else if(!strcmp(cur_node->name,"Xaxis"))
         {
-                        printf(" 2");
-          cur_node = cur_node->children;
-          while (cur_node->type != XML_ELEMENT_NODE) {
-            cur_node = cur_node->next;
+          xmlNode * asd_node = NULL;
+          asd_node = cur_node;
+          asd_node = asd_node -> children;
+          while (asd_node->type != XML_ELEMENT_NODE) {
+            asd_node = asd_node->next;
           }
-            printf("%s\n", cur_node->children->content);
           x_axis.name = malloc(256*sizeof(char));
-          strcpy(x_axis.name, cur_node->children->content);
-          printf("%s\n",x_axis.name);
-
+          strcpy(x_axis.name, asd_node->children->content);
         }
         else if(!strcmp(cur_node->name,"Yaxis"))
         {
-
+          //y_axis.y_axisElems = malloc(5* sizeof(struct YaxisElements));
+          xmlNode * asd_node = NULL;
+          for (asd_node = cur_node->children; asd_node; asd_node = asd_node->next) {
+             if ( asd_node->type == XML_ELEMENT_NODE) {
+                if(!strcmp(asd_node->name,"name"))
+                {
+                  y_axis.name = malloc(256* sizeof(char));
+                  strcpy(y_axis.name,asd_node->children->content);
+                }
+                else if(!strcmp(asd_node->name,"forecolor"))
+                {
+                  strcpy(y_axis.color,asd_node->children->content);
+                }
+              }
+          }
         }
         else if(!strcmp(cur_node->name,"Xset"))
         {
-
+          xmlNode * asd_node = NULL;
+          int a = 0;
+          for (asd_node = cur_node->children; asd_node; asd_node = asd_node->next) {
+             if ( asd_node->type == XML_ELEMENT_NODE && !strcmp(asd_node->name,"xdata")) {
+               strcpy(x_axis.xelements[a],asd_node->children->content);
+               a ++;
+             }
+           }
+           x_axis.howmanyelements = a;
         }
         else if(!strcmp(cur_node->name,"Yset"))
         {
+          xmlAttr * NodeAttribute = NULL;
+          xmlNode * asd_node = NULL;
+          char * attribute = NULL;
+          int a = y_axis.howmanyelements;
+          y_axis.elements[a].name = malloc(sizeof(char)*256);
+          y_axis.elements[a].unit = malloc(sizeof(char)*25);
+          y_axis.elements[a].showvalue = false;
+          printf("%s\n", y_axis.elements[a].showvalue?"true":"false");
+          if(cur_node->properties != NULL)
+          {
+            for (NodeAttribute = cur_node->properties; NodeAttribute;NodeAttribute = NodeAttribute->next) {
+              attribute = xmlNodeGetContent((xmlNode*)NodeAttribute);
+              if(!strcmp(NodeAttribute->name, "unit"))
+              {
+                strcpy(y_axis.elements[a].unit , attribute);
+                printf("%s\n",y_axis.elements[a].unit  );
+              }
+              else if(!strcmp(NodeAttribute->name, "name"))
+              {
+                strcpy(y_axis.elements[a].name , attribute);
+                printf("%s\n",y_axis.elements[a].name);
+              }
+              else if(!strcmp(NodeAttribute->name, "showvalue"))
+              {
+                if(!strcmp(attribute,"yes"))
+                {
+                  printf("%s\n",attribute);
+                  y_axis.elements[a].showvalue = true;
+                  printf("girdi");
+                }
+              }
+              else if(!strcmp(NodeAttribute->name, "fillcolor"))
+              {
+                strcpy(y_axis.elements[a].fillcolor, attribute);
+              }
+            }
+          }
+          int i = 0;
+          for (asd_node = cur_node->children; asd_node; asd_node = asd_node->next) {
+             if ( asd_node->type == XML_ELEMENT_NODE) {
+               if(!strcmp(asd_node->name, "ydata"))
+               {
+                 y_axis.elements[a].values[i] = atoi(asd_node->children->content);
+                 i ++;
+               }
 
-        }
+             }
+           }
+           printf("%s\n", y_axis.elements[a].showvalue?"true":"false");
+           y_axis.howmanyelements = a +1;
+         }
       }
 FillElements(cur_node->children);
   }
@@ -150,7 +223,7 @@ int main(int argc , char *argv[])
 	doc = xmlReadFile(Filename, NULL, 0);
 	if (doc == NULL)
 	{
-		printf("Error: File Not FOund! %s\n", Filename);
+		printf("Error: File Not Found! %s\n", Filename);
 	}
 	else
 	{
