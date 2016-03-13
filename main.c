@@ -1,11 +1,13 @@
 #include "stdio.h"
 #include "string.h"
 #include "stdbool.h"
+#include <math.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <libxml/xmlschemastypes.h>
+
 /*
-gcc main.c -I/usr/include/libxml2 -lxml2 -std=gnu11 -o chartgen
+gcc main.c -I/usr/include/libxml2 -lxml2 -std=gnu11 -o chartgen -lm
 */
 struct Canvas{
   char * charttitle;
@@ -39,6 +41,7 @@ struct YaxisElements elements[10];
 char *inputpath;
 char *outputpath;
 char *validationpath;
+int textsize;
 
 static void printBarChart()
 {
@@ -51,9 +54,225 @@ static void printLineChart()
 }
 static void printPieChart()
 {
-  //Doldurulmam Gerekli
+  xmlDocPtr doc = NULL; /* document pointer */
+  xmlNodePtr root_node = NULL, node = NULL, pathnode = NULL, node1 = NULL, gnode = NULL;/* node pointers */
+  xmlDtdPtr dtd = NULL; /* DTD pointer */
+  char buff[256];
+  int i, j;
+
+  doc = xmlNewDoc(BAD_CAST "2.0");
+  root_node = xmlNewNode(NULL, BAD_CAST "html");
+  xmlDocSetRootElement(doc, root_node);
+  node1 = xmlNewChild(root_node, NULL, BAD_CAST "body", NULL);
+  node = xmlNewChild(node1, NULL, BAD_CAST "svg", NULL);
+  char height[9];
+  char width[9];
+  sprintf(height,"%d",canvas.length * y_axis.howmanyelements + 20);
+  sprintf(width, "%d",canvas.width * 2);
+  xmlNewProp(node, BAD_CAST "height", BAD_CAST height);
+  xmlNewProp(node, BAD_CAST "width", BAD_CAST width);
+  xmlNewProp(node, BAD_CAST "encoding", BAD_CAST "UNICODE");
+///intitial
+int circledim = 0;// smallest of width and height
+circledim = (canvas.length > canvas.width ? canvas.width:canvas.length);
+circledim = circledim - 20; // r of the circle
+circledim = circledim /2;
+printf("%d\n",canvas.width);
+//printf("Smallest circledim = %d\n",circledim );
+textsize = circledim / 10;
+
+  //HEADER
+
+
+  gnode = xmlNewChild(node, NULL, BAD_CAST "text",canvas.charttitle);
+  char * attrib = malloc(250 * sizeof(char));
+  xmlNewProp(gnode,BAD_CAST "text-anchor", BAD_CAST "middle");
+  sprintf(attrib,"%d",canvas.width);
+  xmlNewProp(gnode,BAD_CAST "x", BAD_CAST attrib);
+  sprintf(attrib,"%d",textsize * 2);
+  xmlNewProp(gnode,BAD_CAST "y", BAD_CAST attrib);
+  sprintf(attrib,"%d",textsize * 2);
+  xmlNewProp(gnode,BAD_CAST "font-size", BAD_CAST attrib);
+  xmlNewProp(gnode,BAD_CAST "font-family", BAD_CAST "Verdana");
+  for (int times = 0; times < y_axis.howmanyelements; times++) {
+    //Doldurulmam Gerekli
+
+    int centery = canvas.length * times + canvas.length/2 + textsize * 2;
+    int centerx = canvas.width/2;
+    int startangle = 0;
+    int total = 0;
+    for (int i = 0; y_axis.elements[times].values[i] && i < 10; i++) {
+      //find total values
+      total = total + y_axis.elements[times].values[i];
+    }
+    double angles [10];
+    double totalangle = 0;
+    int howmanyelements = 0;
+    for (int i = 0; y_axis.elements[times].values[i] && i < 10; i++) {
+      //find each angles
+      angles[i] = ceil(360 * y_axis.elements[times].values[i]/total);
+      totalangle = totalangle + angles[i];
+      howmanyelements ++;
+    }
+    double error = (360.0 - totalangle)/2;
+    angles[0]+= error;
+    angles[howmanyelements -1] += error;//error correction
+    double endAngle = 0;
+    for (int i = 0; y_axis.elements[times].values[i] && i < 10; i++) {
+      char attr[256];
+      gnode = xmlNewChild(node, NULL, BAD_CAST "g", NULL);
+      char * color = malloc(sizeof(char)*7);
+      switch (i)
+      {
+        case 0:
+        strcpy(color, "BCB968");
+        break;
+        case 1:
+        strcpy(color, "8FA8A2");
+        break;
+        case 2:
+        strcpy(color, "CCD4BD");
+        break;
+        case 3:
+        strcpy(color, "9E3B36");
+        break;
+        case 4:
+        strcpy(color, "50553F");
+        break;
+        case 5:
+        strcpy(color, "212735");
+        break;
+        case 6:
+        strcpy(color, "B9CE8B");
+        break;
+        case 7:
+        strcpy(color, "622C3C");
+        break;
+        case 8:
+        strcpy(color, "9D677E");
+        break;
+        case 9:
+        strcpy(color, "E0BAC5");
+        break;
+      }
+      sprintf(attr, "#%s", color);
+      xmlNewProp(gnode,BAD_CAST "fill", BAD_CAST attr);
+      pathnode = xmlNewChild(gnode, NULL, BAD_CAST "path", NULL);
+      //find each points to make a path
+      double startAngle = endAngle;
+      endAngle = startAngle + angles[i];
+      int x1 = (centerx + circledim* cos(M_PI*startAngle/180));
+      int y1 = (centery + circledim* sin(M_PI*startAngle/180));
+      int x2 = (centerx + circledim* cos(M_PI*endAngle/180));
+      int y2 = (centery + circledim* sin(M_PI*endAngle/180));
+
+      sprintf(attr, "M %d,%d  L %d,%d A %d,%d 0 0,1 %d,%d z",centerx,centery,x1, y1, circledim,circledim, x2, y2);
+      xmlNewProp(pathnode,BAD_CAST "d", BAD_CAST attr);
+      printf("%f\n",endAngle );
+    }
+    //Circle finished lets start with HEADER TEXT
+
+    //Leged Title
+    gnode = xmlNewChild(node, NULL, BAD_CAST "text",y_axis.elements[times].name);
+    attrib = malloc(250 * sizeof(char));
+    xmlNewProp(gnode,BAD_CAST "text-anchor", BAD_CAST "start");
+    sprintf(attrib,"%d",canvas.width * 3 / 2);
+    xmlNewProp(gnode,BAD_CAST "x", BAD_CAST attrib);
+    sprintf(attrib,"%d",canvas.length * times + textsize * 5);
+    xmlNewProp(gnode,BAD_CAST "y", BAD_CAST attrib);
+    sprintf(attrib,"%d",textsize);
+    xmlNewProp(gnode,BAD_CAST "font-size", BAD_CAST attrib);
+    for (int i = 0; y_axis.elements[times].values[i] && i < 10; i++) {
+      //Create value instruction
+      if(y_axis.elements[times].showvalue)
+      {
+        char * value = malloc (sizeof(char)* 15);
+        sprintf(value, "(%d)", y_axis.elements[times].values[i]);
+        gnode = xmlNewChild(node, NULL, BAD_CAST "text", value);
+        char * attribin = malloc(250 * sizeof(char));
+        xmlNewProp(gnode,BAD_CAST "text-anchor", BAD_CAST "end");
+        sprintf(attribin,"%d",canvas.width * 3 / 2);
+        xmlNewProp(gnode,BAD_CAST "x", BAD_CAST attribin);
+        sprintf(attribin,"%d",canvas.length * times+textsize * (7 + i));
+        xmlNewProp(gnode,BAD_CAST "y", BAD_CAST attribin);
+        sprintf(attribin,"%d",textsize * 2 / 3);
+        xmlNewProp(gnode,BAD_CAST "font-size", BAD_CAST attribin);
+      }
+      char * value = malloc (sizeof(char)* 15);
+      sprintf(value, "(%d)", y_axis.elements[times].values[i]);
+      gnode = xmlNewChild(node, NULL, BAD_CAST "rect", NULL);
+      char * attribin = malloc(250 * sizeof(char));
+      sprintf(attribin,"%d",canvas.width * 3 / 2 + 5);
+      xmlNewProp(gnode,BAD_CAST "x", BAD_CAST attribin);
+      sprintf(attribin,"%d",canvas.length * times + textsize * (6 + i) + textsize/2);
+      xmlNewProp(gnode,BAD_CAST "y", BAD_CAST attribin);
+      sprintf(attribin,"%d",textsize * 2);
+      xmlNewProp(gnode,BAD_CAST "width", BAD_CAST attribin);
+      sprintf(attribin,"%d",textsize - 1);
+      xmlNewProp(gnode,BAD_CAST "height", BAD_CAST attribin);
+      char * color = malloc(sizeof(char)*7);
+      switch (i)
+      {
+        case 0:
+        strcpy(color, "BCB968");
+        break;
+        case 1:
+        strcpy(color, "8FA8A2");
+        break;
+        case 2:
+        strcpy(color, "CCD4BD");
+        break;
+        case 3:
+        strcpy(color, "9E3B36");
+        break;
+        case 4:
+        strcpy(color, "50553F");
+        break;
+        case 5:
+        strcpy(color, "212735");
+        break;
+        case 6:
+        strcpy(color, "B9CE8B");
+        break;
+        case 7:
+        strcpy(color, "622C3C");
+        break;
+        case 8:
+        strcpy(color, "9D677E");
+        break;
+        case 9:
+        strcpy(color, "E0BAC5");
+        break;
+      }
+      sprintf(attribin,"#%s",color);
+      xmlNewProp(gnode,BAD_CAST "fill", BAD_CAST attribin);
+      //Print Names
+      value = malloc (sizeof(char)* 15);
+      sprintf(value, "(%s)", x_axis.xelements[i]);
+      gnode = xmlNewChild(node, NULL, BAD_CAST "text", value);
+      attribin = malloc(250 * sizeof(char));
+      xmlNewProp(gnode,BAD_CAST "text-anchor", BAD_CAST "start");
+      sprintf(attribin,"%d",canvas.width * 3 / 2 + 3 * textsize);
+      xmlNewProp(gnode,BAD_CAST "x", BAD_CAST attribin);
+      sprintf(attribin,"%d",canvas.length * times + textsize * (7 + i));
+      xmlNewProp(gnode,BAD_CAST "y", BAD_CAST attribin);
+      sprintf(attribin,"%d",textsize * 2 / 3);
+      xmlNewProp(gnode,BAD_CAST "font-size", BAD_CAST attribin);
+
+    }
+  }
+
+
+
+
+
+  xmlSaveFormatFileEnc( outputpath, doc, "UTF­8", 1);
+  xmlFreeDoc(doc);
+  xmlCleanupParser();
+  xmlMemoryDump();
 
 }
+
 static void FillElements(xmlNode * a_node)
 {
   xmlNode *cur_node =NULL;
@@ -301,4 +520,3 @@ int main(int argc , char *argv[])
 
 	return (0);
 }
-/* Recursive function that prints the XML structure */
