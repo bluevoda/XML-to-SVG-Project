@@ -3,6 +3,7 @@
 #include "stdbool.h"
 #include <libxml/parser.h>
 #include <libxml/tree.h>
+#include <libxml/xmlschemastypes.h>
 /*
 gcc main.c -I/usr/include/libxml2 -lxml2 -std=gnu11 -o chartgen
 */
@@ -26,24 +27,33 @@ struct Yaxis{
   struct YaxisElements elements[10];
 
 };
-
 struct Xaxis{
   char *name;
   int howmanyelements;
   char xelements[10][256];
 };
-
 struct Yaxis y_axis;
 struct Xaxis x_axis;
 struct Canvas canvas;
 struct YaxisElements elements[10];
+char *inputpath;
+char *outputpath;
+char *validationpath;
 
-/*
-static void print_element_names(xmlNode * a_node)
+static void printBarChart()
 {
+  //Doldurulması Gerekli
 
 }
-*/
+static void printLineChart()
+{
+//Doldurulması Gerekli
+}
+static void printPieChart()
+{
+  //Doldurulmam Gerekli
+
+}
 static void FillElements(xmlNode * a_node)
 {
   xmlNode *cur_node =NULL;
@@ -164,33 +174,75 @@ static void FillElements(xmlNode * a_node)
            y_axis.howmanyelements = a +1;
          }
       }
-FillElements(cur_node->children);
+      FillElements(cur_node->children);
   }
+}
+
+static void Validate()
+{
+  xmlDocPtr doc;
+	xmlSchemaPtr schema = NULL;
+	xmlSchemaParserCtxtPtr ctxt;
+	xmlLineNumbersDefault(1);
+	ctxt = xmlSchemaNewParserCtxt(validationpath);
+	schema = xmlSchemaParse(ctxt);
+	xmlSchemaFreeParserCtxt(ctxt);
+	doc = xmlReadFile(inputpath, NULL, 0);
+
+  if (doc == NULL)
+	{
+		fprintf(stderr, "Could not parse %s\n");
+	}
+	else
+	{
+		xmlSchemaValidCtxtPtr ctxt;
+		int ret ;
+		ctxt = xmlSchemaNewValidCtxt(schema);
+		ret = xmlSchemaValidateDoc(ctxt, doc);
+
+		if (ret == 0)
+		{
+			printf("validates\n");
+		}
+		else if (ret > 0)
+		{
+			printf("fails to validate\n");
+		}
+		else
+		{
+			printf("validation generated an internal error\n");
+		}
+		xmlSchemaFreeValidCtxt(ctxt);
+		xmlFreeDoc(doc);
+
+	}
 }
 
 int main(int argc , char *argv[])
 {
-  int inputloc = -1;
-  int outputloc = -1;
-  int verificationloc = -1;
   int charttype = -1;
+  bool validate = false;
   for(int i = 1; i < argc; i++)
   {
     if (!strcmp(argv[i],"-h"))
     {
       printf("-h : help \n-o <outputfilename> : next word is outputname \n-i : <inputfilename> next word is the name of input file \n-t <type> : Type pf the graph must be one of bar, pie, line ");
     }
-    else if (!strcmp(argv[i],"-i"))//eger oyleyse input kismindayiz demektir.
+    else if (!strcmp(argv[i],"-i") && (argv[i + 1]))//eger oyleyse input kismindayiz demektir.
     {
-      inputloc = i + 1;
+      inputpath = malloc(sizeof(char)* 256);
+      strcpy(inputpath, argv[i + 1]);
     }
-    else if (!strcmp(argv[i],"-o"))//eger oyleyse output kismindayiz demektir.
+    else if (!strcmp(argv[i],"-o") && (argv[i + 1]) )//eger oyleyse output kismindayiz demektir.
     {
-      outputloc = i + 1;
-          }
-    else if (!strcmp(argv[i],"-v"))//eger oyleyse verification kismindayiz demektir.
+      outputpath = malloc(sizeof(char)* 256);
+      strcpy(outputpath, argv[i + 1]);
+    }
+    else if (!strcmp(argv[i],"-v") && (argv[i + 1]))//eger oyleyse verification kismindayiz demektir.
     {
-      verificationloc = i + 1;
+      validationpath = malloc(sizeof(char)* 256);
+      validate = true;
+      strcpy(validationpath, argv[i + 1]);
     }
     else if (!strcmp(argv[i],"-t"))
     {
@@ -211,9 +263,13 @@ int main(int argc , char *argv[])
       }
     }
   }
+  if(validate)
+  {
+    Validate();
+  }
 	xmlDoc         *doc = NULL;
 	xmlNode        *root_element = NULL;
-	const char     *Filename = argv[inputloc];
+	const char     *Filename = inputpath;
 	doc = xmlReadFile(Filename, NULL, 0);
 	if (doc == NULL)
 	{
@@ -222,11 +278,26 @@ int main(int argc , char *argv[])
 	else
 	{
       root_element = xmlDocGetRootElement(doc);
-      //print_element_names(root_element);
       FillElements(root_element);
-		  xmlFreeDoc(doc);;
-    }
-        xmlCleanupParser();
+      if(charttype == -1)
+      {
+        printf("Please Enter a Chart Type\n");
+      }
+      else if(charttype == 1)
+      {
+        printBarChart();
+      }
+      else if(charttype == 2)
+      {
+        printLineChart();
+      }
+      else
+      {
+        printPieChart();
+      }
+		  xmlFreeDoc(doc);
+  }
+  xmlCleanupParser();
 
 	return (0);
 }
