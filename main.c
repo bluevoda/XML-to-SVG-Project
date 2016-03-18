@@ -55,7 +55,6 @@ char el[256];
 
     xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
     root_node = xmlNewNode(NULL, BAD_CAST "svg");
-    xmlNewProp(root_node, BAD_CAST "body", BAD_CAST NULL);
     xmlNewProp(root_node, BAD_CAST "version", BAD_CAST "1.1");
 xmlNewProp(root_node, BAD_CAST "xmlns", BAD_CAST "http://www.w3.org/2000/svg");
 xmlNewProp(root_node, BAD_CAST "xmlns:xlink", BAD_CAST "http://www.w3.org/1999/xlink");
@@ -239,7 +238,7 @@ x_count=x_count+canvas.width/20;
 }
 //x_count=x_count+canvas.width/20;
 }
-  xmlSaveFormatFileEnc( outputpath, doc, "UTF­8", 1);
+  htmlSaveFile(outputpath, doc);
   xmlFreeDoc(doc);
   xmlCleanupParser();
   xmlMemoryDump();
@@ -460,7 +459,7 @@ static void printLineChart()
 	xmlNewProp(text, BAD_CAST "font-size", buffer);
 
 	//closing file
-	xmlSaveFormatFileEnc( outputpath, doc, "UTF­8", 1);
+	htmlSaveFile(outputpath, doc);
 	xmlFreeDoc(doc);
 	xmlCleanupParser();
 	xmlMemoryDump();
